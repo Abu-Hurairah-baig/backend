@@ -18,10 +18,11 @@ jobs:
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
+          port: 22
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/backend
-            git pull origin main
-            npm install --production
+            set -e
+            cd ~/backend || exit 1
+            git pull origin main || exit 1
+            npm install --production || exit 1
             pm2 restart all || pm2 start server.js --name "backend"
-
