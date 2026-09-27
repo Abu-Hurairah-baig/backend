@@ -32,7 +32,7 @@ const asyncHandler = (fn) => (req, res, next) =>
 
 // Health check
 app.get('/', (req, res) => {
-  res.json({ message: 'Users API is running' });
+  res.json({ message: 'Users API is running - CI/CD test' });
 });
 
 // READ ALL -> GET /users
