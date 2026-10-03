@@ -25,7 +25,7 @@ data "aws_ami" "amazon_linux" {
 #trivy:ignore:AWS-0104
 resource "aws_security_group" "web" {
   name        = "backend1-web"
-  description = "SSH from my IP, app port open"
+  description = "SSH and app access restricted to the configured CIDR range"
 
   ingress {
     from_port   = 22
@@ -38,7 +38,7 @@ resource "aws_security_group" "web" {
     from_port   = var.app_port
     to_port     = var.app_port
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.my_ip]
   }
 
   egress {
@@ -79,4 +79,3 @@ output "public_ip" {
 output "app_url" {
   value = "http://${aws_instance.web.public_ip}:${var.app_port}"
 }
-
