@@ -3,3 +3,11 @@ node_modules/
 npm-debug.log
 *.log
 .DS_Store
+
+# Terraform-generated files and local values
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/terraform.tfvars
+**/*.tfvars
+**/*.tfvars.json

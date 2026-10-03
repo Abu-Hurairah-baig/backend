@@ -1,0 +1,7 @@
+# Never commit these:
+.terraform/            # downloaded provider plugins
+*.tfstate              # state file — can contain secrets
+*.tfstate.backup
+terraform.tfvars       # your real values (IP, key name)
+*.tfvars.json
+crash.log
