@@ -21,6 +21,8 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
+# Outbound internet is required for dnf, git clone and npm install
+#trivy:ignore:AWS-0104
 resource "aws_security_group" "web" {
   name        = "backend1-web"
   description = "SSH from my IP, app port open"
@@ -58,6 +60,16 @@ resource "aws_instance" "web" {
     app_port = var.app_port
   })
   user_data_replace_on_change = true
+
+  metadata_options {
+    http_tokens   = "required"
+    http_endpoint = "enabled"
+  }
+
+  root_block_device {
+    encrypted   = true
+    volume_type = "gp3"
+  }
 }
 
 output "public_ip" {
@@ -67,3 +79,4 @@ output "public_ip" {
 output "app_url" {
   value = "http://${aws_instance.web.public_ip}:${var.app_port}"
 }
+

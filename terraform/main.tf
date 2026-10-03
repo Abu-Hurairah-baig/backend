@@ -1,8 +1,4 @@
-# ---------------------------------------------------------------------------
-# main.tf — provider + EC2 instance + security group
-# ---------------------------------------------------------------------------
-
-# Tell Terraform we are using AWS, and pin the provider version.
+@'
 terraform {
   required_providers {
     aws = {
@@ -12,78 +8,64 @@ terraform {
   }
 }
 
-# Configure the AWS provider. Region comes from a variable (see variables.tf).
-# Credentials are read automatically from the AWS CLI — never hardcode keys here.
 provider "aws" {
   region = var.aws_region
 }
 
-# Look up the latest official Ubuntu 22.04 image automatically,
-# so we do not hardcode an image ID that differs per region.
-data "aws_ami" "ubuntu" {
+data "aws_ami" "amazon_linux" {
   most_recent = true
-  owners      = ["099720109477"] # Canonical (official Ubuntu publisher)
+  owners      = ["amazon"]
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+    values = ["al2023-ami-2023*-x86_64"]
   }
 }
 
-# Security group = the firewall for the server.
-resource "aws_security_group" "backend_sg" {
-  name        = "backend-sg"
-  description = "Allow SSH and app traffic"
+resource "aws_security_group" "web" {
+  name        = "backend1-web"
+  description = "SSH from my IP, app port open"
 
-  # SSH — locked to YOUR ip only (much safer than open to the world).
   ingress {
-    description = "SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = [var.my_ip]
   }
 
-  # The port your Node/Express app listens on.
   ingress {
-    description = "Backend app"
-    from_port   = 5000
-    to_port     = 5000
+    from_port   = var.app_port
+    to_port     = var.app_port
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Allow all outbound (so the box can pull Docker images, run apt, etc.)
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
-  tags = {
-    Name = "backend-sg"
-  }
 }
 
-# The EC2 instance itself.
-resource "aws_instance" "backend" {
-  ami                    = data.aws_ami.ubuntu.id
+resource "aws_instance" "web" {
+  ami                    = data.aws_ami.amazon_linux.id
   instance_type          = var.instance_type
-  key_name               = var.key_name # name of an existing EC2 key pair in AWS
-  vpc_security_group_ids = [aws_security_group.backend_sg.id]
+  key_name               = var.key_name
+  vpc_security_group_ids = [aws_security_group.web.id]
 
-  # Startup script: installs Docker and runs the app automatically on first boot.
-  # templatefile() injects var.repo_url into the ${repo_url} placeholder.
-  user_data = templatefile("${path.module}/user_data.sh", {
+  user_data = templatefile("${path.module}/user_data.sh.tpl", {
     repo_url = var.repo_url
+    app_port = var.app_port
   })
-
-  # user_data only runs on an instance's FIRST boot. This forces Terraform to
-  # destroy & recreate the instance whenever the script changes, so it re-runs.
   user_data_replace_on_change = true
-
-  tags = {
-    Name = "backend-server"
-  }
 }
+
+output "public_ip" {
+  value = aws_instance.web.public_ip
+}
+
+output "app_url" {
+  value = "http://${aws_instance.web.public_ip}:${var.app_port}"
+}
+'@ | Set-Content -Encoding ascii main.tf
